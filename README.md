@@ -9,7 +9,7 @@ This repo contains the CloudFormation template to deploy Security Hub custom act
 Download the AWS CloudFormation template (`SecurityHubSOAR_CloudFormation.yaml`) and deploy it from the console
 
 ### Solutions Architecture
-![Architecture](https://github.com/aws-samples/aws-security-hub-prowler-integrations/blob/master/Architecture.jpg)
+![Architecture](https://github.com/aws-samples/aws-security-hub-remediation-code/blob/master/Architecture.jpg)
 1.	Integrated services send their findings to Security Hub.
 2.	From the Security Hub console, you’ll choose a custom action for a finding. Each custom action is then emitted as a CloudWatch Event.
 3.	The CloudWatch Event rule triggers a Lambda function. This function is mapped to a custom action, based on the custom action’s ARN.
