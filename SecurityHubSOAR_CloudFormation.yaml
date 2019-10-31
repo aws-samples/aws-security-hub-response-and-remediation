@@ -1276,7 +1276,7 @@ Resources:
     Type: AWS::Lambda::Function
     Properties:
       FunctionName: PatchingSOAR
-      Description: Uses SSM Doc RunPatchBaseline to install security patches on Windows, AMZL, Ubuntu, SLES and CentOS
+      Description: Uses SSM Doc RunPatchBaseline to install security patches on Windows, AMZL, Ubuntu, SLES and CentOS, sent from Inspector vuln findings in SecHub
       Handler: index.lambda_handler
       MemorySize: 256
       Role: !GetAtt RunPatchBaselineSOARLambdaRole.Arn
@@ -1296,65 +1296,7 @@ Resources:
               ssmInstanceProfileArn = os.environ['SSM_EC2_INSTANCE_PROFILE_ARN']
               ssmInstanceProfileName = os.environ['SSM_EC2_INSTANCE_PROFILE_NAME']
               # create boto3 clients for EC2 & SSM
-              ec2 = boto3.client('ec2')
               ssm = boto3.client('ssm')
-              # check if ec2 has an existing inst prof
-              try:
-                  response = ec2.describe_iam_instance_profile_associations(
-                  Filters=[
-                      {
-                          'Name': 'instance-id',
-                          'Values': [ myEc2Instance ]
-                      }
-                  ],
-                  MaxResults=20
-                  )
-                  emptyInstanceProfileCheck = str(response['IamInstanceProfileAssociations'])
-              except Exception as e:
-                  print(e)
-                  raise    
-              # if ec2 doesnt have attached inst prof, attach ssm role from env vars
-              if emptyInstanceProfileCheck == '[]':
-                  print("No current Instance Profile Attached")
-                  try:
-                      response = ec2.associate_iam_instance_profile(
-                      IamInstanceProfile={
-                          'Arn': ssmInstanceProfileArn,
-                          'Name': ssmInstanceProfileName
-                      },
-                      InstanceId=myEc2Instance
-                      )
-                      print(response)
-                      print("EC2 Instance Profile for SSM Added!")
-                  except Exception as e:
-                      print(e)
-                      raise
-              # if there is an existing inst prof, detach it and attach ssm role from env vars    
-              else:
-                  existingInstanceProfileAssocId = str(response['IamInstanceProfileAssociations'][0]['AssociationId'])
-                  print("Found Existing Instance Profile:" + " " + existingInstanceProfileAssocId + " " + "attempting to Remove")
-                  try:
-                      response = ec2.disassociate_iam_instance_profile(AssociationId=existingInstanceProfileAssocId)
-                      print(response)
-                      print("IAM Instance Profile Removed")
-                  except Exception as e:
-                      print(e)
-                      raise        
-                  try:
-                      response = ec2.associate_iam_instance_profile(
-                      IamInstanceProfile={
-                          'Arn': ssmInstanceProfileArn,
-                          'Name': ssmInstanceProfileName
-                      },
-                      InstanceId=myEc2Instance
-                      )
-                      print(response)
-                      print("EC2 Instance Profile for SSM Added!")
-                  except Exception as e:
-                      print(e)
-                      raise    
-              # allow IAM change to propogate
-              time.sleep(5)
               # install / update SSM agent
               try:
                   response = ssm.send_command(

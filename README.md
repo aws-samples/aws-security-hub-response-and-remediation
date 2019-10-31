@@ -43,15 +43,16 @@ Download the AWS CloudFormation template (`SecurityHubSOAR_CloudFormation.yaml`)
     - A Lambda function will parse out the KMS CMK infromation from the finding and call the KMS EnableKeyRotation API to enable rotation
 -	**2.9 – “Ensure VPC flow logging is enabled in all VPCs”**
     - To enable VPC flow logging for rejected packets, the Lambda function for this playbook will create a new CloudWatch Logs group. For easy identification, the name of the group will include the non-compliant VPC name. The Lambda function will programmatically update your VPC to enable flow logs to be sent to the newly created log group. Similar to CloudTrail logging, VPC flow log need an IAM role and permissions to be allowed to publish logs to CloudWatch. To avoid creating multiple new IAM roles and policies via Lambda, you’ll populate the ARN of this IAM role in the Lambda environmental variables for this playbook.
--	4.1 – “Ensure no security groups allow ingress from 0.0.0.0/0 to port 22”
--	4.2 – “Ensure no security groups allow ingress from 0.0.0.0/0 to port 3389”
+-	**4.1 – “Ensure no security groups allow ingress from 0.0.0.0/0 to port 22”**
+-	**4.2 – “Ensure no security groups allow ingress from 0.0.0.0/0 to port 3389”**
     - A Lambda function will parse out the Security Group information from the finding and calls the Systems Manager StartAutomationExecution API to run the Automation document `AWS-DisablePublicAccessForSecurityGroup` to remove 0.0.0.0/0 rules from the Security Group
 
 
 #### Custom Playbooks
-- Send Findings to JIRA
-    - A Lambda function calls the Systems Manager StartAutomationExecution API to run the Automation document `AWS-CreateJiraIssue` JIRA information is provided
-- Apply Patch Baseline
+- **Send Findings to JIRA**
+    - A Lambda function calls the Systems Manager StartAutomationExecution API to run the Automation document `AWS-CreateJiraIssue` JIRA information is provided via Lambda env vars
+- **Apply Patch Baseline**
+    - A Lambda function calls the Systems Manager SendCommand API to invoke the `AWS-UpdateSSMAgent` and `AWS-RunPatchBaseline` Documents on the instance. **NOTE**: This Playbook must be applied from Inspector vulnerability findings only!
 
 ### How do I perform response and remediation automatically?
 You can modify your CloudWatch Event to use the `Security Hub Findings - Imported` **detail-type** and specify the Title of the specific CIS Finding as shown below. When findings that match this pattern are encountered, they will invoke your Lambda function without having to specify a Custom Action in Security Hub.
