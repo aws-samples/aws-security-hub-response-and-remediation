@@ -16,6 +16,7 @@ Download the AWS CloudFormation template (`SecurityHubSOAR_CloudFormation.yaml`)
 4.	Dependent on the particular rule, the Lambda function  invoked will perform a remediation action on your behalf
 
 ### What remediation playbooks are covered and how?
+All playbooks are made up of CloudWatch Events & Lambda functions
 
 #### CIS AWS Benchmark Controls: ####
 -	**1.3 – “Ensure credentials unused for 90 days or greater are disabled”**
@@ -74,6 +75,11 @@ You can modify your CloudWatch Event to use the `Security Hub Findings - Importe
    }
  }
 ```
+
+### How can I use these playbooks from my Security Hub Master Account?
+You can add an IAM Policy to your Lambda function's execution role that allows a Role in the Master Account to assume those Lambda functions. 
+
+For more information see this Premium Support Knowledge Center post on cross-account Lambda policies: https://aws.amazon.com/premiumsupport/knowledge-center/lambda-function-assume-iam-role/
 
 ## License
 
