@@ -98,14 +98,15 @@ Resources:
           import boto3
           import json
           import datetime
-          
+          import os
           def lambda_handler(event, context):
               nonRotatedKeyUser = str(event['detail']['findings'][0]['Resources'][0]['Details']['Other']['userName'])
-              
-              # Create IAM client
+              findingId = str(event['detail']['findings'][0]['Id'])
+              lambdaFunctionName = os.environ['AWS_LAMBDA_FUNCTION_NAME']
+              # Create bot3 clients and resource
               iam = boto3.client('iam')
+              securityhub = boto3.client('securityhub')
               iam_resource = boto3.resource('iam')
-          
               try:
                   todaysDatetime = datetime.datetime.now(datetime.timezone.utc)
                   paginator = iam.get_paginator('list_access_keys')
@@ -118,8 +119,35 @@ Resources:
                           else:
                               print("Access key over 90 days old found!")
                               access_key = iam_resource.AccessKey(nonRotatedKeyUser, accessKeyId)
-                              access_key.delete()
-                              print("Deleted access key: " + accessKeyId)
+                              access_key.deactivate()
+                              get_KeyStatus = iam.list_access_keys(UserName=nonRotatedKeyUser,MaxItems=20)
+                              for keys in get_KeyStatus['AccessKeyMetadata']:
+                                  access_KeyId = str(keys['AccessKeyId'])
+                                  access_KeyStatus = str(keys['Status'])
+                                  # find the key Id that matches the exposed key
+                                  if access_KeyId == accessKeyId:
+                                      if access_KeyStatus == 'Inactive':
+                                          print('Access key over 90 days old deactivated!')
+                                          try:
+                                              response = securityhub.update_findings(
+                                                  Filters={
+                                                      'Id': [
+                                                          {
+                                                              'Value': findingId,
+                                                              'Comparison': 'EQUALS'
+                                                          }
+                                                      ]
+                                                  },
+                                                  Note={
+                                                      'Text': 'Non compliant access key was deactivated sucessfully!',
+                                                      'UpdatedBy': lambdaFunctionName
+                                                  },
+                                                  RecordState='ACTIVE'
+                                              )
+                                              print(response)
+                                          except Exception as e:
+                                              print(e)
+                                              raise
               except Exception as e:
                   print(e)
                   raise
@@ -143,8 +171,9 @@ Resources:
             Resource: '*'
           - Effect: Allow
             Action:
-            - iam:DeleteAccessKey
+            - iam:UpdateAccessKey
             - iam:ListAccessKeys
+            - securityhub:UpdateFindings
             Resource: '*'
       AssumeRolePolicyDocument:
         Version: 2012-10-17
@@ -306,19 +335,40 @@ Resources:
         ZipFile: |
           import boto3
           import json
+          import os
           def lambda_handler(event, context):
               # parse non-compliant trail from Security Hub finding
               noncompliantTrail = str(event['detail']['findings'][0]['Resources'][0]['Details']['Other']['name'])
-              # import boto3 client for CloudTrail
-              cloudtrail = boto3.client('cloudtrail')              
+              findingId = str(event['detail']['findings'][0]['Id'])
+              # import lambda function name from env vars
+              lambdaFunctionName = os.environ['AWS_LAMBDA_FUNCTION_NAME']
+              # import boto3 clients for CT & SH
+              cloudtrail = boto3.client('cloudtrail')
+              securityhub = boto3.client('securityhub')             
               # turn on cloudtrail log file validation
               try:
-                  response = cloudtrail.update_trail(
-                  Name = noncompliantTrail,
-                  EnableLogFileValidation = True
-                  )
+                  response = cloudtrail.update_trail(Name=noncompliantTrail,EnableLogFileValidation=True)
                   print(response)
-                  print("CloudTrail log file validation is now enabled for" + " " + noncompliantTrail + "!")
+                  try:
+                      response = securityhub.update_findings(
+                          Filters={
+                              'Id': [
+                                  {
+                                      'Value': findingId,
+                                      'Comparison': 'EQUALS'
+                                  }
+                              ]
+                          },
+                          Note={
+                              'Text': 'Re-enabled Log File Validation sucessfully!',
+                              'UpdatedBy': lambdaFunctionName
+                          },
+                          RecordState='ACTIVE'
+                      )
+                      print(response)
+                  except Exception as e:
+                      print(e)
+                      raise
               except Exception as e:
                   print(e)
                   print("Enabling log file validation has failed! Please remediate manually!")
@@ -344,6 +394,7 @@ Resources:
           - Effect: Allow
             Action:
             - cloudtrail:UpdateTrail
+            - securityhub:UpdateFindings
             Resource: '*'
       AssumeRolePolicyDocument:
         Version: 2012-10-17
@@ -405,12 +456,17 @@ Resources:
         ZipFile: |
           import boto3
           import json
+          import os
           def lambda_handler(event, context):
               # Parse ARN of non-compliant resource from Security Hub CWE
               rawBucketInfo = str(event['detail']['findings'][0]['Resources'][0]['Id'])
+              findingId = str(event['detail']['findings'][0]['Id'])
+              # import lambda function name from env vars
+              lambdaFunctionName = os.environ['AWS_LAMBDA_FUNCTION_NAME']
               # Remove ARN string, create new variable
               noncompliantCTBucket = rawBucketInfo.replace("arn:aws:s3:::", "")
-              # import SSM and S3 clients
+              # import SSM and SecHub clients
+              securityhub = boto3.client('securityhub')
               ssm = boto3.client('ssm')
               try:
                   removeS3PublicReadWrite = ssm.start_automation_execution(
@@ -421,7 +477,26 @@ Resources:
                       }
                   )
                   print(removeS3PublicReadWrite)
-                  print("SSM Automation to remove S3 Public Access succesfully executed")
+                  try:
+                      response = securityhub.update_findings(
+                          Filters={
+                              'Id': [
+                                  {
+                                      'Value': findingId,
+                                      'Comparison': 'EQUALS'
+                                  }
+                              ]
+                          },
+                          Note={
+                              'Text': 'Systems Manager Automation document to remove public access was successfully invoked. Refer to Automation results to determine efficacy',
+                              'UpdatedBy': lambdaFunctionName
+                          },
+                          RecordState='ACTIVE'
+                      )
+                      print(response)
+                  except Exception as e:
+                      print(e)
+                      raise
               except Exception as e:
                   print(e)
                   print("SSM automation execution failed")
@@ -447,8 +522,13 @@ Resources:
           - Effect: Allow
             Action:
             - ssm:StartAutomationExecution
-            - s3:*
+            - s3:GetBucketAcl
+            - s3:GetBucketPolicy
+            - s3:PutBucketAcl
+            - s3:PutBucketPolicy
+            - s3:PutBucketPublicAccessBlock
             - iam:PassRole
+            - securityhub:UpdateFindings
             Resource: '*'
       AssumeRolePolicyDocument:
         Version: 2012-10-17
@@ -517,12 +597,17 @@ Resources:
           import os
           def lambda_handler(event, context):
               # Parse name of non-compliant resource from Security Hub CWE
-              noncomplaintCloudTrail = str(event['detail']['findings'][0]['Resources'][0]['Details']['Other']['name'])              
+              noncomplaintCloudTrail = str(event['detail']['findings'][0]['Resources'][0]['Details']['Other']['name'])
+              findingId = str(event['detail']['findings'][0]['Id'])
+              # import lambda runtime vars - imported session token to add to log group name to enforce uniqueness
+              lambdaFunctionName = os.environ['AWS_LAMBDA_FUNCTION_NAME']
+              lambdaFunctionSeshToken = os.environ['AWS_SESSION_TOKEN']              
               # Set name for Cloudwatch logs group
-              cloudwatchLogGroup = 'CloudTrail/CIS2-4-' + noncomplaintCloudTrail
+              cloudwatchLogGroup = 'CloudTrail/CIS2-4-' + noncomplaintCloudTrail + lambdaFunctionSeshToken
               # Import CloudTrail to CloudWatch logging IAM Role
               cloudtrailLoggingArn = os.environ['CLOUDTRAIL_CW_LOGGING_ROLE_ARN']              
               # set boto3 clients
+              securityhub = boto3.client('securityhub')
               cwl = boto3.client('logs')
               cloudtrail = boto3.client('cloudtrail')              
               # create cloudwatch log group
@@ -531,19 +616,14 @@ Resources:
                   logGroupName=cloudwatchLogGroup,
                   )
                   print(createGroup)
-                  print("CloudWatch Log Group successfully created")
               except Exception as e:
                   print(e)
-                  print("Failed to create CloudWatch log group")
                   raise
-              # wait for cloudwatch log group to propagate    
+              # wait for CWL group to propagate    
               time.sleep(2)              
-              # describe new group, grab ARN for IAM Policy
+              # get CWL ARN
               try:
-                  describeGroup = cwl.describe_log_groups(
-                  logGroupNamePrefix=cloudwatchLogGroup
-                  )
-                  print(describeGroup)
+                  describeGroup = cwl.describe_log_groups(logGroupNamePrefix=cloudwatchLogGroup)
                   cloudwatchArn = str(describeGroup['logGroups'][0]['arn'])
               except Exception as e:
                   print(e)
@@ -556,10 +636,28 @@ Resources:
                   CloudWatchLogsRoleArn=cloudtrailLoggingArn
                   )
                   print(updateCloudtrail)
-                  print("CloudTrail to CloudWatch Logging successfully enabled")
+                  try:
+                      response = securityhub.update_findings(
+                          Filters={
+                              'Id': [
+                                  {
+                                      'Value': findingId,
+                                      'Comparison': 'EQUALS'
+                                  }
+                              ]
+                          },
+                          Note={
+                              'Text': 'CloudWatch logging is now enabled for CloudTrail trail ' + noncomplaintCloudTrail,
+                              'UpdatedBy': lambdaFunctionName
+                          },
+                          RecordState='ACTIVE'
+                      )
+                      print(response)
+                  except Exception as e:
+                      print(e)
+                      raise
               except Exception as e:
                   print(e)
-                  print("Failed to update CloudTrail")
                   raise
   CIS24SOARLambdaRole:
     Type: AWS::IAM::Role
@@ -583,7 +681,7 @@ Resources:
           - Effect: Allow
             Action:
             - cloudtrail:UpdateTrail
-            - iam:PassRole
+            - securityhub:UpdateFindings
             Resource: '*'
       AssumeRolePolicyDocument:
         Version: 2012-10-17
@@ -652,12 +750,15 @@ Resources:
           def lambda_handler(event, context):
               # Parse ARN of non-compliant resource from Security Hub CWE
               ctBucket = str(event['detail']['findings'][0]['Resources'][0]['Id'])
+              findingId = str(event['detail']['findings'][0]['Id'])
+              # import lambda function name from runtime env
+              lambdaFunctionName = os.environ['AWS_LAMBDA_FUNCTION_NAME']
               # Remove ARN string, create new variable
               formattedCTBucket = ctBucket.replace("arn:aws:s3:::", "")
-              # import Lambda ENV VAR for Access Logging Bucket
-              # Ensure Bucket has Log Delivery Write ACL
+              # import Lambda env var for Access Logging Bucket
               accessLoggingBucket = os.environ['ACCESS_LOGGING_BUCKET']              
               # import SSM boto3 client
+              securityhub = boto3.client('securityhub')
               ssm = boto3.client('ssm')              
               #excute automation with ConfigureS3BucketLogging Document
               try:
@@ -674,7 +775,26 @@ Resources:
                       }
                   )
                   print(response)
-                  print("Automation Execution Successfully Sent!")
+                  try:
+                      response = securityhub.update_findings(
+                          Filters={
+                              'Id': [
+                                  {
+                                      'Value': findingId,
+                                      'Comparison': 'EQUALS'
+                                  }
+                              ]
+                          },
+                          Note={
+                              'Text': 'Systems Manager Automation document to remove public access was successfully invoked. Refer to Automation results to determine efficacy',
+                              'UpdatedBy': lambdaFunctionName
+                          },
+                          RecordState='ACTIVE'
+                      )
+                      print(response)
+                  except Exception as e:
+                      print(e)
+                      raise
               except Exception as e:
                   print(e)
                   raise
@@ -699,7 +819,8 @@ Resources:
           - Effect: Allow
             Action:
             - ssm:StartAutomationExecution
-            - s3:*
+            - securityhub:UpdateFindings
+            - s3:PutBucketLogging
             - iam:PassRole
             Resource: '*'
       AssumeRolePolicyDocument:
@@ -763,30 +884,50 @@ Resources:
           import boto3
           import json
           import time
+          import os
           def lambda_handler(event, context):
               # Parse ARN of non-compliant resource from Security Hub CWE
               noncompliantCMK = str(event['detail']['findings'][0]['Resources'][0]['Id'])              
               # Remove ARN string, create new variable
+              findingId = str(event['detail']['findings'][0]['Id'])
+              # import lambda function name from env vars
+              lambdaFunctionName = os.environ['AWS_LAMBDA_FUNCTION_NAME']
               formattedCMK = noncompliantCMK.replace("AWS::KMS::Key:", "")              
-              # Import KMS Client
-              kms = boto3.client('kms')              
+              # Import KMS & SecHub Clients
+              kms = boto3.client('kms')
+              securityhub = boto3.client('securityhub')        
               # Rotate KMS Key
               try:
-                  rotate = kms.enable_key_rotation(
-                  KeyId=formattedCMK
-                  )
-                  print(rotate)
+                  rotate = kms.enable_key_rotation(KeyId=formattedCMK)
                   time.sleep(3)
               except Exception as e:
                   print(e)
                   raise
               try:    
-                  confirmRotate = kms.get_key_rotation_status(
-                  KeyId=formattedCMK
-                  )
+                  confirmRotate = kms.get_key_rotation_status(KeyId=formattedCMK)
                   rotationStatus = str(confirmRotate['KeyRotationEnabled'])
                   if rotationStatus == 'True':
                       print("KMS CMK Rotation Successfully Enabled!")
+                      try:
+                          response = securityhub.update_findings(
+                              Filters={
+                                  'Id': [
+                                      {
+                                          'Value': findingId,
+                                          'Comparison': 'EQUALS'
+                                      }
+                                  ]
+                              },
+                              Note={
+                                  'Text': 'Key Rotation successfully enabled for KMS key ' + formattedCMK,
+                                  'UpdatedBy': lambdaFunctionName
+                              },
+                              RecordState='ACTIVE'
+                          )
+                          print(response)
+                      except Exception as e:
+                          print(e)
+                          raise
                   else:
                       print("KMS CMK Rotation Failed! Please troubleshoot manually!")
               except Exception as e:
@@ -814,6 +955,7 @@ Resources:
             Action:
             - kms:EnableKeyRotation
             - kms:GetKeyRotationStatus
+            - securityhub:UpdateFindings
             Resource: '*'
       AssumeRolePolicyDocument:
         Version: 2012-10-17
@@ -882,22 +1024,22 @@ Resources:
           import os
           def lambda_handler(event, context):
               # Grab non-logged VPC ID from Security Hub finding
-              noncompliantVPC = str(event['detail']['findings'][0]['Resources'][0]['Details']['Other']['vpcId'])              
-              # Set Flow Logs Role ARN as variable from Lambda console ENV VARs
-              # check out https://docs.aws.amazon.com/vpc/latest/userguide/flow-logs-cwl.html for info
+              noncompliantVPC = str(event['detail']['findings'][0]['Resources'][0]['Details']['Other']['vpcId'])
+              findingId = str(event['detail']['findings'][0]['Id'])
+              # import lambda runtime vars
+              lambdaFunctionName = os.environ['AWS_LAMBDA_FUNCTION_NAME']
+              lambdaFunctionSeshToken = os.environ['AWS_SESSION_TOKEN']                
+              # Get Flow Logs Role ARN from env vars
               DeliverLogsPermissionArn = os.environ['flowLogRoleARN']              
               # Import boto3 clients
               cwl = boto3.client('logs')
-              ec2 = boto3.client('ec2')              
+              ec2 = boto3.client('ec2')
+              securityhub = boto3.client('securityhub')              
               # set dynamic variable for CW Log Group for VPC Flow Logs
-              vpcFlowLogGroup = "VPCFlowLogs/" + noncompliantVPC              
+              vpcFlowLogGroup = "VPCFlowLogs/" + noncompliantVPC + lambdaFunctionSeshToken         
               # create cloudwatch log group
               try:
-                  create_log_grp = cwl.create_log_group(
-                  logGroupName=vpcFlowLogGroup,
-                  )
-                  # print confirmation
-                  print(create_log_grp)
+                  create_log_grp = cwl.create_log_group(logGroupName=vpcFlowLogGroup)
               except Exception as e:
                   print(e)
                   raise              
@@ -933,9 +1075,28 @@ Resources:
                   )
                   flowStatus = str(confirmFlowlogs['FlowLogs'][0]['FlowLogStatus'])
                   if flowStatus == 'ACTIVE':
-                      print("Flow Logging for" + " " + noncompliantVPC + " " + "Is Active!")
+                      try:
+                          response = securityhub.update_findings(
+                              Filters={
+                                  'Id': [
+                                      {
+                                          'Value': findingId,
+                                          'Comparison': 'EQUALS'
+                                      }
+                                  ]
+                              },
+                              Note={
+                                  'Text': 'Flow logging is now enabled for VPC ' + noncompliantVPC,
+                                  'UpdatedBy': lambdaFunctionName
+                              },
+                              RecordState='ACTIVE'
+                          )
+                          print(response)
+                      except Exception as e:
+                          print(e)
+                          raise
                   else:
-                      print("Enabling Flow Logging for" + " " + noncompliantVPC + " " + "Failed! Please remediate manually")
+                      print('Enabling VPC flow logging failed! Remediate manually')
                       return 1
               except Exception as e:
                   print(e)
@@ -960,7 +1121,7 @@ Resources:
             Resource: '*'
           - Effect: Allow
             Action:
-            - iam:PassRole
+            - securityhub:UpdateFindings
             - ec2:CreateFlowLogs
             - ec2:DescribeFlowLogs
             Resource: '*'
@@ -1024,28 +1185,48 @@ Resources:
         ZipFile: |
           import boto3
           import json
-
+          import os
           def lambda_handler(event, context):
               # parse Security Group ID from Security Hub CWE
               non_compliant_sg = str(event['detail']['findings'][0]['Resources'][0]['Details']['Other']['groupId'])
-              
+              findingId = str(event['detail']['findings'][0]['Id'])
+              # import lambda function name from runtime vars
+              lambdaFunctionName = os.environ['AWS_LAMBDA_FUNCTION_NAME']
+              #import boto3 clients
+              ssm = boto3.client('ssm')
+              securityhub = boto3.client('securityhub')
               try:
-                  client = boto3.client('ssm')
-                  response = client.start_automation_execution(
+                  response = ssm.start_automation_execution(
                       # Launch SSM Doc via Automation
                       DocumentName='AWS-DisablePublicAccessForSecurityGroup',
                       DocumentVersion='1',
                       Parameters={
-                          'GroupId': [
-                              non_compliant_sg # Passed from Security Hub Finding
-                          ]
+                          'GroupId': [ non_compliant_sg ]
                       }
                   )
                   print(response)
-                  print("SSM Automation succesfully invoked! Please check the SSM automation console for more information")
+                  try:
+                      response = securityhub.update_findings(
+                          Filters={
+                              'Id': [
+                                  {
+                                      'Value': findingId,
+                                      'Comparison': 'EQUALS'
+                                  }
+                              ]
+                          },
+                          Note={
+                              'Text': 'Systems Manager Automation document to remove public access was successfully invoked. Refer to Automation results to determine efficacy',
+                              'UpdatedBy': lambdaFunctionName
+                          },
+                          RecordState='ACTIVE'
+                      )
+                      print(response)
+                  except Exception as e:
+                      print(e)
+                      raise
               except Exception as e:
                   print(e)
-                  print("SSM Automation invocation failed!")
                   raise
   CIS412SOARLambdaRole:
     Type: AWS::IAM::Role
@@ -1073,6 +1254,7 @@ Resources:
             - ec2:UpdateSecurityGroupRuleDescriptionsEgress
             - ec2:UpdateSecurityGroupRuleDescriptionsIngress
             - iam:PassRole
+            - securityhub:UpdateFindings
             Resource: '*'
       AssumeRolePolicyDocument:
         Version: 2012-10-17
@@ -1291,10 +1473,6 @@ Resources:
           def lambda_handler(event, context):
               # Parse data from Security Hub Inspector Vuln Finding
               myEc2Instance = str(event['detail']['findings'][0]['ProductFields']['attributes:5/value'])
-              inspectorSHFindingId = str(event['detail']['findings'][0]['Id'])
-              # Declare Env Vars for SSM EC2 Instance Profile Arn & Name
-              ssmInstanceProfileArn = os.environ['SSM_EC2_INSTANCE_PROFILE_ARN']
-              ssmInstanceProfileName = os.environ['SSM_EC2_INSTANCE_PROFILE_NAME']
               # create boto3 clients for EC2 & SSM
               ssm = boto3.client('ssm')
               # install / update SSM agent
@@ -1304,7 +1482,7 @@ Resources:
                       DocumentName='AWS-UpdateSSMAgent',
                       DocumentVersion='1',
                       TimeoutSeconds=360,
-                      Comment='UpdateSSMAgent Invoked in response to Security Hub finding:' + ' ' + inspectorSHFindingId,
+                      Comment='UpdateSSMAgent Invoked in response to Security Hub finding',
                       CloudWatchOutputConfig={ 'CloudWatchOutputEnabled': True }
                   )
                   print(response)
@@ -1322,7 +1500,7 @@ Resources:
                       DocumentName='AWS-RunPatchBaseline',
                       DocumentVersion='1',
                       TimeoutSeconds=360,
-                      Comment='RunPatchBaseline Invoked in response to Security Hub finding:' + ' ' + inspectorSHFindingId,
+                      Comment='RunPatchBaseline Invoked in response to Security Hub finding',
                       Parameters={ 'Operation': [ 'Install' ] },
                       CloudWatchOutputConfig={ 'CloudWatchOutputEnabled': True }
                   )
@@ -1351,11 +1529,7 @@ Resources:
             Resource: '*'
           - Effect: Allow
             Action:
-            - iam:PassRole
             - ssm:SendCommand
-            - ec2:AssociateIamInstanceProfile
-            - ec2:DescribeIamInstanceProfileAssociations
-            - ec2:DisassociateIamInstanceProfile
             Resource: '*'
       AssumeRolePolicyDocument:
         Version: 2012-10-17
