@@ -19,7 +19,7 @@ Resources:
   CreateActionTargetLambdaFunction:
     Type: AWS::Lambda::Function
     Properties:
-      FunctionName: CreateActionTarget
+      FunctionName: CISCreateActionTargets
       Description: Custom resource to create an action target in Security Hub
       Handler: index.lambda_handler
       MemorySize: 256
