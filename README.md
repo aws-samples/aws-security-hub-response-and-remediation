@@ -53,8 +53,7 @@ All playbooks are made up of CloudWatch Events & Lambda functions, details are a
 - **Send Findings to JIRA**
     - A Lambda function calls the Systems Manager StartAutomationExecution API to run the Automation document `AWS-CreateJiraIssue` JIRA information is provided via Lambda env vars
 - **Apply Patch Baseline**
-    - A Lambda function calls the Systems Manager SendCommand API to invoke the `AWS-UpdateSSMAgent` and `AWS-RunPatchBaseline` Documents on the instance. Because you can realistically call this playbook from any Inspector CVE finding a Note will not be added to the finding.
-    - **NOTE**: This Playbook must be applied from Inspector vulnerability findings only!
+    - A Lambda function calls the Systems Manager SendCommand API to invoke the `AWS-UpdateSSMAgent` and `AWS-RunPatchBaseline` Documents on the instance. Because you can realistically call this playbook from any finding that specifies AwsEc2Instance as its Resource.Type (GuardDuty findings, Inspector findings, 3rd party product findings) a Note will not be added.
 
 ### How do I perform response and remediation automatically?
 You can modify your CloudWatch Event to use the `Security Hub Findings - Imported` **detail-type** and specify the Title of the specific CIS Finding as shown below. When findings that match this pattern are encountered, they will invoke your Lambda function without having to specify a Custom Action in Security Hub. You can additional choose to filter down on other elements of the AWS Security Finding Format such as Product.Severity, Finding.Type or other elements to design automated remediation actions.

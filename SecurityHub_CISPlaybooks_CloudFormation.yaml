@@ -889,10 +889,10 @@ Resources:
               # Parse ARN of non-compliant resource from Security Hub CWE
               noncompliantCMK = str(event['detail']['findings'][0]['Resources'][0]['Id'])              
               # Remove ARN string, create new variable
-              findingId = str(event['detail']['findings'][0]['Id'])
+              formattedCMK = noncompliantCMK.replace("AWS::KMS::Key:", "") 
               # import lambda function name from env vars
               lambdaFunctionName = os.environ['AWS_LAMBDA_FUNCTION_NAME']
-              formattedCMK = noncompliantCMK.replace("AWS::KMS::Key:", "")              
+              findingId = str(event['detail']['findings'][0]['Id'])             
               # Import KMS & SecHub Clients
               kms = boto3.client('kms')
               securityhub = boto3.client('securityhub')        
@@ -1471,10 +1471,16 @@ Resources:
           import time
           import os
           def lambda_handler(event, context):
-              # Parse data from Security Hub Inspector Vuln Finding
-              myEc2Instance = str(event['detail']['findings'][0]['ProductFields']['attributes:5/value'])
-              # create boto3 clients for EC2 & SSM
+              # create boto3 clients & runtime env vars
               ssm = boto3.client('ssm')
+              sts = boto3.client('sts')
+              awsRegion = os.environ['AWS_REGION']
+              # create sts account var, parse finding from ASFF
+              getAcccount = sts.get_caller_identity()
+              awsAccount = str(getAcccount['Account'])
+              # Parse data from Security Hub finding
+              rawEc2Instance = str(event['detail']['findings'][0]['Resources'][0]['Id'])
+              myEc2Instance = rawEc2Instance.replace("arn:aws:ec2:" + awsRegion + ":" + awsAccount + ":instance/", "")
               # install / update SSM agent
               try:
                   response = ssm.send_command(
