@@ -16,7 +16,7 @@ Download the AWS CloudFormation template (`SecurityHub_CISPlaybooks_CloudFormati
 4.	Dependent on the particular rule, the Lambda function  invoked will perform a remediation action on your behalf
 
 ### What remediation playbooks are covered and how?
-All playbooks are made up of CloudWatch Events & Lambda functions, details are as follows:
+All playbook details are as follows:
 
 #### CIS AWS Benchmark Playbooks (10 Playbooks):
 -	**1.3 – “Ensure credentials unused for 90 days or greater are disabled”**
@@ -39,7 +39,7 @@ All playbooks are made up of CloudWatch Events & Lambda functions, details are a
 -	**2.6 – “Ensure S3 bucket access logging is enabled on the CloudTrail S3 bucket”**
     - To ensure the S3 bucket that contains your CloudTrail logs has access logging enabled, the Lambda function for this playbook invokes the Systems Manager document `AWS-ConfigureS3BucketLogging` this document will enable access logging for that bucket. To avoid statically populating your S3 access logging bucket in the Lambda function’s code, you’ll pass that value in via an environmental variable. You will need to follow-up in the Automation console, if the automation is executed successfully a Note will be added to the Security Hub finding.
 -	**2.7 – “Ensure CloudTrail logs are encrypted at rest using AWS KMS CMKs”**
-    - The Code and Instructions are provided in the Blog post 
+    - The Code and Instructions for this Playbook are provided in the Blog post
 -	**2.8 – “Ensure rotation for customer created CMKs is enabled”**
     - A Lambda function will parse out the KMS CMK infromation from the finding and call the KMS EnableKeyRotation API to enable rotation and if successful a Note will be added to the Security Hub finding.
 -	**2.9 – “Ensure VPC flow logging is enabled in all VPCs”**
@@ -51,12 +51,12 @@ All playbooks are made up of CloudWatch Events & Lambda functions, details are a
 
 #### Custom Playbooks (2 Playbooks):
 - **Send Findings to JIRA**
-    - A Lambda function calls the Systems Manager StartAutomationExecution API to run the Automation document `AWS-CreateJiraIssue` JIRA information is provided via Lambda env vars
+    - A Lambda function calls the Systems Manager StartAutomationExecution API to run the Automation document `AWS-CreateJiraIssue`, JIRA information is provided via Lambda env vars which will be sent to the Automation document. The title and description of the finding will be mapped into the Issue. Due to the findings being sent to an Issue Management system, a Note will not be added to the finding.
 - **Apply Patch Baseline**
     - A Lambda function calls the Systems Manager SendCommand API to invoke the `AWS-UpdateSSMAgent` and `AWS-RunPatchBaseline` Documents on the instance. Because you can realistically call this playbook from any finding that specifies AwsEc2Instance as its Resource.Type (GuardDuty findings, Inspector findings, 3rd party product findings) a Note will not be added.
 
 ### How do I perform response and remediation automatically?
-You can modify your CloudWatch Event to use the `Security Hub Findings - Imported` **detail-type** and specify the Title of the specific CIS Finding as shown below. When findings that match this pattern are encountered, they will invoke your Lambda function without having to specify a Custom Action in Security Hub. You can additional choose to filter down on other elements of the AWS Security Finding Format such as Product.Severity, Finding.Type or other elements to design automated remediation actions.
+You can modify your CloudWatch Event to use the `Security Hub Findings - Imported` **detail-type** and specify the Title of the specific CIS Finding as shown below. When findings that match this pattern are encountered, they will invoke your Lambda function without having to specify a Custom Action in Security Hub. You can additional choose to filter down on other elements of the AWS Security Finding Format such as Product.Severity, Finding.Type or other elements to design automated remediation actions. With this setup, you would not need to trigger a Custom Action, and could delete them from the console, or remove it from the CFN.
 
 ```
  {
