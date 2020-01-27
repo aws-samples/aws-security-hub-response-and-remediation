@@ -47,6 +47,8 @@ All playbook details are as follows:
 -	**4.1 – “Ensure no security groups allow ingress from 0.0.0.0/0 to port 22”**
 -	**4.2 – “Ensure no security groups allow ingress from 0.0.0.0/0 to port 3389”**
     - A Lambda function will parse out the Security Group information from the finding and calls the Systems Manager StartAutomationExecution API to run the Automation document `AWS-DisablePublicAccessForSecurityGroup` to remove 0.0.0.0/0 rules from the Security Group. You will need to follow-up in the Automation console, if the automation is executed successfully a Note will be added to the Security Hub finding.
+-	**4.3 – “Ensure the default security group of every VPC restricts all traffic”**
+    - A Lambda function will parse out the Security Group information from the finding and use an EC2 resource to iterate through ingress and egress IP permissions and then revoke them if they exist. If any rules were removed from the default security group a Note will be added reflecting this. This playbook should technically work on other Security Group findings if their Group ID is provided in `Resource.Details.Other` within the ASFF.
 
 
 #### Custom Playbooks (2 Playbooks):
@@ -79,7 +81,7 @@ You can modify your CloudWatch Event to use the `Security Hub Findings - Importe
 Yes, they will be uploaded here, most likely in different CloudFormation templates if it makes sense.
 
 ### How can I use these playbooks from my Security Hub Master Account?
-Functionality for this is under development and will be offered as a separate CloudFormation template for those who want to run *only* from their Master account at a later date.
+Functionality for this is under development and will be offered as a separate IAC template for those who want to run *only* from their Master account at a later date.
 
 To get started on developing it yourself you can add an IAM Policy to your Lambda function's execution role that allows a Role in the Master Account to assume those Lambda functions. For more information see this Premium Support Knowledge Center post on cross-account Lambda policies: https://aws.amazon.com/premiumsupport/knowledge-center/lambda-function-assume-iam-role/
 
