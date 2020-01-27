@@ -14,7 +14,7 @@
  # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
  # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 AWSTemplateFormatVersion: 2010-09-09
-Description: This Template will create the supporting infrastructure for the Security Hub SOAR AWS Security Blog Post for each Control supported by Remediation
+Description: This Template will create the supporting infrastructure for the Security Hub Response & Remediation AWS Security Blog Post for each Control supported by Remediation
 Resources:
   CreateActionTargetLambdaFunction:
     Type: AWS::Lambda::Function
@@ -83,14 +83,14 @@ Resources:
           Principal: { Service: lambda.amazonaws.com }
           Action:
           - sts:AssumeRole
-  CIS13SOARLambdaFunction:
+  CIS13RRLambdaFunction:
     Type: AWS::Lambda::Function
     Properties:
-      FunctionName: CIS_1-3_1-4_SOAR
+      FunctionName: CIS_1-3_1-4_RR
       Description: Remediates CIS 1.3 and CIS 1.4 by Deleting IAM Keys over 90 Days Old
       Handler: index.lambda_handler
       MemorySize: 256
-      Role: !GetAtt CIS13SOARLambdaRole.Arn
+      Role: !GetAtt CIS13RRLambdaRole.Arn
       Runtime: python3.7
       Timeout: 60
       Code:
@@ -151,7 +151,7 @@ Resources:
               except Exception as e:
                   print(e)
                   raise
-  CIS13SOARLambdaRole:
+  CIS13RRLambdaRole:
     Type: AWS::IAM::Role
     Properties:
       Policies:
@@ -182,18 +182,18 @@ Resources:
           Principal: { Service: lambda.amazonaws.com }
           Action:
           - sts:AssumeRole
-  CIS13SOARActionTarget:
+  CIS13RRActionTarget:
     Type: Custom::ActionTarget
     Version: 1.0
     Properties:
       ServiceToken: !GetAtt CreateActionTargetLambdaFunction.Arn
-      Name: CIS 1.3 & 1.4 SOAR
+      Name: CIS 1.3 & 1.4 RR
       Description: Remediates CIS 1.3 and CIS 1.4 by Deleting IAM Keys over 90 Days Old
-      Id: cis134soar
-  CIS13SOAREventRule: 
+      Id: cis134RR
+  CIS13RREventRule: 
     Type: AWS::Events::Rule
     Properties: 
-      Name: CIS_1-3_1-4_SOAR_CWE
+      Name: CIS_1-3_1-4_RR_CWE
       Description: "Remediates CIS 1.3 and CIS 1.4 by Deleting IAM Keys over 90 Days Old"
       EventPattern: 
         source: 
@@ -201,34 +201,34 @@ Resources:
         detail-type: 
           - Security Hub Findings - Custom Action
         resources: 
-          - !GetAtt CIS13SOARActionTarget.Arn
+          - !GetAtt CIS13RRActionTarget.Arn
       State: "ENABLED"
       Targets: 
         - 
           Arn: 
             Fn::GetAtt: 
-              - "CIS13SOARLambdaFunction"
+              - "CIS13RRLambdaFunction"
               - "Arn"
-          Id: "CIS_1-3-4_SOAR_CWE"
-  CIS13SOARCWEPermissions: 
+          Id: "CIS_1-3-4_RR_CWE"
+  CIS13RRCWEPermissions: 
     Type: AWS::Lambda::Permission
     Properties: 
       FunctionName: 
-        Ref: "CIS13SOARLambdaFunction"
+        Ref: "CIS13RRLambdaFunction"
       Action: "lambda:InvokeFunction"
       Principal: "events.amazonaws.com"
       SourceArn: 
         Fn::GetAtt: 
-          - "CIS13SOAREventRule"
+          - "CIS13RREventRule"
           - "Arn"
-  CIS15to111SOARLambdaFunction:
+  CIS15to111RRLambdaFunction:
     Type: AWS::Lambda::Function
     Properties:
-      FunctionName: CIS_1-5_1-11_SOAR
+      FunctionName: CIS_1-5_1-11_RR
       Description: Remediates CIS Checks 1.5 through 1.11 by establishing a CIS Compliant Strong Password Policy
       Handler: index.lambda_handler
       MemorySize: 256
-      Role: !GetAtt CIS15to111SOARLambdaRole.Arn
+      Role: !GetAtt CIS15to111RRLambdaRole.Arn
       Runtime: python3.7
       Timeout: 60
       Code:
@@ -253,7 +253,7 @@ Resources:
               except Exception as e:
                   print(e)
                   raise
-  CIS15to111SOARLambdaRole:
+  CIS15to111RRLambdaRole:
     Type: AWS::IAM::Role
     Properties:
       Policies:
@@ -287,13 +287,13 @@ Resources:
     Version: 1.0
     Properties:
       ServiceToken: !GetAtt CreateActionTargetLambdaFunction.Arn
-      Name: CIS 1.5 - 1.11 SOAR
+      Name: CIS 1.5 - 1.11 RR
       Description: Remediates CIS Checks 1.5 through 1.11 by establishing a CIS Compliant Strong Password Policy
-      Id: cis1511soar
-  CIS15to111SOAREventRule: 
+      Id: cis1511RR
+  CIS15to111RREventRule: 
     Type: AWS::Events::Rule
     Properties: 
-      Name: CIS_1-5_1-11_SOAR_CWE
+      Name: CIS_1-5_1-11_RR_CWE
       Description: "Remediates CIS Checks 1.5 through 1.11 by establishing a CIS Compliant Strong Password Policy"
       EventPattern: 
         source: 
@@ -307,28 +307,28 @@ Resources:
         - 
           Arn: 
             Fn::GetAtt: 
-              - "CIS15to111SOARLambdaFunction"
+              - "CIS15to111RRLambdaFunction"
               - "Arn"
-          Id: "CIS_1-5-11_SOAR_CWE"
-  CIS15to111SOARCWEPermissions: 
+          Id: "CIS_1-5-11_RR_CWE"
+  CIS15to111RRCWEPermissions: 
     Type: AWS::Lambda::Permission
     Properties: 
       FunctionName: 
-        Ref: "CIS15to111SOARLambdaFunction"
+        Ref: "CIS15to111RRLambdaFunction"
       Action: "lambda:InvokeFunction"
       Principal: "events.amazonaws.com"
       SourceArn: 
         Fn::GetAtt: 
-          - "CIS15to111SOAREventRule"
+          - "CIS15to111RREventRule"
           - "Arn"
-  CIS22SOARLambdaFunction:
+  CIS22RRLambdaFunction:
     Type: AWS::Lambda::Function
     Properties:
-      FunctionName: CIS_2-2_SOAR
+      FunctionName: CIS_2-2_RR
       Description: Remediates CIS 2.2 by enabling CloudTrail log file validation
       Handler: index.lambda_handler
       MemorySize: 256
-      Role: !GetAtt CIS22SOARLambdaRole.Arn
+      Role: !GetAtt CIS22RRLambdaRole.Arn
       Runtime: python3.7
       Timeout: 60
       Code:
@@ -373,7 +373,7 @@ Resources:
                   print(e)
                   print("Enabling log file validation has failed! Please remediate manually!")
                   raise
-  CIS22SOARLambdaRole:
+  CIS22RRLambdaRole:
     Type: AWS::IAM::Role
     Properties:
       Policies:
@@ -408,13 +408,13 @@ Resources:
     Version: 1.0
     Properties:
       ServiceToken: !GetAtt CreateActionTargetLambdaFunction.Arn
-      Name: CIS 2.2 SOAR
+      Name: CIS 2.2 RR
       Description: Remediates CIS 2.2 by enabling CloudTrail log file validation
-      Id: cis22soar
-  CIS22SOAREventRule: 
+      Id: cis22RR
+  CIS22RREventRule: 
     Type: AWS::Events::Rule
     Properties: 
-      Name: CIS_2-2_SOAR_CWE
+      Name: CIS_2-2_RR_CWE
       Description: "Remediates CIS 2.2 by enabling CloudTrail log file validation"
       EventPattern: 
         source: 
@@ -428,28 +428,28 @@ Resources:
         - 
           Arn: 
             Fn::GetAtt: 
-              - "CIS22SOARLambdaFunction"
+              - "CIS22RRLambdaFunction"
               - "Arn"
-          Id: "CIS_2-2_SOAR_CWE"
-  CIS22SOARCWEPermissions: 
+          Id: "CIS_2-2_RR_CWE"
+  CIS22RRCWEPermissions: 
     Type: AWS::Lambda::Permission
     Properties: 
       FunctionName: 
-        Ref: "CIS22SOARLambdaFunction"
+        Ref: "CIS22RRLambdaFunction"
       Action: "lambda:InvokeFunction"
       Principal: "events.amazonaws.com"
       SourceArn: 
         Fn::GetAtt: 
-          - "CIS22SOAREventRule"
+          - "CIS22RREventRule"
           - "Arn"
-  CIS23SOARLambdaFunction:
+  CIS23RRLambdaFunction:
     Type: AWS::Lambda::Function
     Properties:
-      FunctionName: CIS_2-3_SOAR
+      FunctionName: CIS_2-3_RR
       Description: Remediates CIS 2.3 by making CloudTrail log bucket private
       Handler: index.lambda_handler
       MemorySize: 256
-      Role: !GetAtt CIS23SOARLambdaRole.Arn
+      Role: !GetAtt CIS23RRLambdaRole.Arn
       Runtime: python3.7
       Timeout: 60
       Code:
@@ -501,7 +501,7 @@ Resources:
                   print(e)
                   print("SSM automation execution failed")
                   raise
-  CIS23SOARLambdaRole:
+  CIS23RRLambdaRole:
     Type: AWS::IAM::Role
     Properties:
       Policies:
@@ -542,13 +542,13 @@ Resources:
     Version: 1.0
     Properties:
       ServiceToken: !GetAtt CreateActionTargetLambdaFunction.Arn
-      Name: CIS 2.3 SOAR
+      Name: CIS 2.3 RR
       Description: Remediates CIS 2.3 by making CloudTrail log bucket private
-      Id: cis23soar
-  CIS23SOAREventRule: 
+      Id: cis23RR
+  CIS23RREventRule: 
     Type: AWS::Events::Rule
     Properties: 
-      Name: CIS_2-3_SOAR_CWE
+      Name: CIS_2-3_RR_CWE
       Description: "Remediates CIS 2.3 by making CloudTrail log bucket private"
       EventPattern: 
         source: 
@@ -562,28 +562,28 @@ Resources:
         - 
           Arn: 
             Fn::GetAtt: 
-              - "CIS23SOARLambdaFunction"
+              - "CIS23RRLambdaFunction"
               - "Arn"
-          Id: "CIS_2-3_SOAR_CWE"
-  CIS23SOARCWEPermissions: 
+          Id: "CIS_2-3_RR_CWE"
+  CIS23RRCWEPermissions: 
     Type: AWS::Lambda::Permission
     Properties: 
       FunctionName: 
-        Ref: "CIS23SOARLambdaFunction"
+        Ref: "CIS23RRLambdaFunction"
       Action: "lambda:InvokeFunction"
       Principal: "events.amazonaws.com"
       SourceArn: 
         Fn::GetAtt: 
-          - "CIS23SOAREventRule"
+          - "CIS23RREventRule"
           - "Arn"
-  CIS24SOARLambdaFunction:
+  CIS24RRLambdaFunction:
     Type: AWS::Lambda::Function
     Properties:
-      FunctionName: CIS_2-4_SOAR
+      FunctionName: CIS_2-4_RR
       Description: Remediates CIS 2.4 by enabling CloudWatch logging for CloudTrail
       Handler: index.lambda_handler
       MemorySize: 256
-      Role: !GetAtt CIS24SOARLambdaRole.Arn
+      Role: !GetAtt CIS24RRLambdaRole.Arn
       Runtime: python3.7
       Timeout: 60
       Environment:
@@ -659,7 +659,7 @@ Resources:
               except Exception as e:
                   print(e)
                   raise
-  CIS24SOARLambdaRole:
+  CIS24RRLambdaRole:
     Type: AWS::IAM::Role
     Properties:
       Policies:
@@ -695,13 +695,13 @@ Resources:
     Version: 1.0
     Properties:
       ServiceToken: !GetAtt CreateActionTargetLambdaFunction.Arn
-      Name: CIS 2.4 SOAR
+      Name: CIS 2.4 RR
       Description: Remediates CIS 2.4 by enabling CloudWatch logging for CloudTrail
-      Id: cis24soar
-  CIS24SOAREventRule: 
+      Id: cis24RR
+  CIS24RREventRule: 
     Type: AWS::Events::Rule
     Properties: 
-      Name: CIS_2-4_SOAR_CWE
+      Name: CIS_2-4_RR_CWE
       Description: "Remediates CIS 2.4 by enabling CloudWatch logging for CloudTrail"
       EventPattern: 
         source: 
@@ -715,28 +715,28 @@ Resources:
         - 
           Arn: 
             Fn::GetAtt: 
-              - "CIS24SOARLambdaFunction"
+              - "CIS24RRLambdaFunction"
               - "Arn"
-          Id: "CIS_2-4_SOAR_CWE"
-  CIS24SOARCWEPermissions: 
+          Id: "CIS_2-4_RR_CWE"
+  CIS24RRCWEPermissions: 
     Type: AWS::Lambda::Permission
     Properties: 
       FunctionName: 
-        Ref: "CIS24SOARLambdaFunction"
+        Ref: "CIS24RRLambdaFunction"
       Action: "lambda:InvokeFunction"
       Principal: "events.amazonaws.com"
       SourceArn: 
         Fn::GetAtt: 
-          - "CIS24SOAREventRule"
+          - "CIS24RREventRule"
           - "Arn"
-  CIS26SOARLambdaFunction:
+  CIS26RRLambdaFunction:
     Type: AWS::Lambda::Function
     Properties:
-      FunctionName: CIS_2-6_SOAR
+      FunctionName: CIS_2-6_RR
       Description: Remediates CIS 2.6 enabling Access Logging on CloudTrail logs bucket
       Handler: index.lambda_handler
       MemorySize: 256
-      Role: !GetAtt CIS26SOARLambdaRole.Arn
+      Role: !GetAtt CIS26RRLambdaRole.Arn
       Runtime: python3.7
       Timeout: 60
       Environment:
@@ -798,7 +798,7 @@ Resources:
               except Exception as e:
                   print(e)
                   raise
-  CIS26SOARLambdaRole:
+  CIS26RRLambdaRole:
     Type: AWS::IAM::Role
     Properties:
       Policies:
@@ -835,13 +835,13 @@ Resources:
     Version: 1.0
     Properties:
       ServiceToken: !GetAtt CreateActionTargetLambdaFunction.Arn
-      Name: CIS 2.6 SOAR
+      Name: CIS 2.6 RR
       Description: Remediates CIS 2.6 enabling Access Logging on CloudTrail logs bucket
-      Id: cis26soar
-  CIS26SOAREventRule: 
+      Id: cis26RR
+  CIS26RREventRule: 
     Type: AWS::Events::Rule
     Properties: 
-      Name: CIS_2-6_SOAR_CWE
+      Name: CIS_2-6_RR_CWE
       Description: "Remediates CIS 2.6 enabling Access Logging on CloudTrail logs bucket"
       EventPattern: 
         source: 
@@ -855,28 +855,28 @@ Resources:
         - 
           Arn: 
             Fn::GetAtt: 
-              - "CIS26SOARLambdaFunction"
+              - "CIS26RRLambdaFunction"
               - "Arn"
-          Id: "CIS_2-6_SOAR_CWE"
-  CIS26SOARCWEPermissions: 
+          Id: "CIS_2-6_RR_CWE"
+  CIS26RRCWEPermissions: 
     Type: AWS::Lambda::Permission
     Properties: 
       FunctionName: 
-        Ref: "CIS26SOARLambdaFunction"
+        Ref: "CIS26RRLambdaFunction"
       Action: "lambda:InvokeFunction"
       Principal: "events.amazonaws.com"
       SourceArn: 
         Fn::GetAtt: 
-          - "CIS26SOAREventRule"
+          - "CIS26RREventRule"
           - "Arn"
-  CIS28SOARLambdaFunction:
+  CIS28RRLambdaFunction:
     Type: AWS::Lambda::Function
     Properties:
-      FunctionName: CIS_2-8_SOAR
+      FunctionName: CIS_2-8_RR
       Description: Remediates CIS 2.8 by enabling key rotation for KMS CMKs
       Handler: index.lambda_handler
       MemorySize: 256
-      Role: !GetAtt CIS28SOARLambdaRole.Arn
+      Role: !GetAtt CIS28RRLambdaRole.Arn
       Runtime: python3.7
       Timeout: 60
       Code:
@@ -933,7 +933,7 @@ Resources:
               except Exception as e:
                   print(e)
                   raise
-  CIS28SOARLambdaRole:
+  CIS28RRLambdaRole:
     Type: AWS::IAM::Role
     Properties:
       Policies:
@@ -969,13 +969,13 @@ Resources:
     Version: 1.0
     Properties:
       ServiceToken: !GetAtt CreateActionTargetLambdaFunction.Arn
-      Name: CIS 2.8 SOAR
+      Name: CIS 2.8 RR
       Description: Remediates CIS 2.8 by enabling key rotation for KMS CMKs without it
-      Id: cis28soar
-  CIS28SOAREventRule: 
+      Id: cis28RR
+  CIS28RREventRule: 
     Type: AWS::Events::Rule
     Properties: 
-      Name: CIS_2-8_SOAR_CWE
+      Name: CIS_2-8_RR_CWE
       Description: "Remediates CIS 2.8 by enabling key rotation for KMS CMKs"
       EventPattern: 
         source: 
@@ -989,28 +989,28 @@ Resources:
         - 
           Arn: 
             Fn::GetAtt: 
-              - "CIS28SOARLambdaFunction"
+              - "CIS28RRLambdaFunction"
               - "Arn"
-          Id: "CIS_2-8_SOAR_CWE"
-  CIS28SOARCWEPermissions: 
+          Id: "CIS_2-8_RR_CWE"
+  CIS28RRCWEPermissions: 
     Type: AWS::Lambda::Permission
     Properties: 
       FunctionName: 
-        Ref: "CIS28SOARLambdaFunction"
+        Ref: "CIS28RRLambdaFunction"
       Action: "lambda:InvokeFunction"
       Principal: "events.amazonaws.com"
       SourceArn: 
         Fn::GetAtt: 
-          - "CIS28SOAREventRule"
+          - "CIS28RREventRule"
           - "Arn"
-  CIS29SOARLambdaFunction:
+  CIS29RRLambdaFunction:
     Type: AWS::Lambda::Function
     Properties:
-      FunctionName: CIS_2-9_SOAR
+      FunctionName: CIS_2-9_RR
       Description: Remediates CIS 2.9 by enabling reject filtered VPC flow logging for VPCs without it
       Handler: index.lambda_handler
       MemorySize: 256
-      Role: !GetAtt CIS29SOARLambdaRole.Arn
+      Role: !GetAtt CIS29RRLambdaRole.Arn
       Runtime: python3.7
       Timeout: 60
       Environment:
@@ -1101,7 +1101,7 @@ Resources:
               except Exception as e:
                   print(e)
                   raise
-  CIS29SOARLambdaRole:
+  CIS29RRLambdaRole:
     Type: AWS::IAM::Role
     Properties:
       Policies:
@@ -1137,13 +1137,13 @@ Resources:
     Version: 1.0
     Properties:
       ServiceToken: !GetAtt CreateActionTargetLambdaFunction.Arn
-      Name: CIS 2.9 SOAR
+      Name: CIS 2.9 RR
       Description: Remediates CIS 2.9 by enabling reject filtered VPC flow logging for VPCs without it
-      Id: cis29soar
-  CIS29SOAREventRule: 
+      Id: cis29RR
+  CIS29RREventRule: 
     Type: AWS::Events::Rule
     Properties: 
-      Name: CIS_2-9_SOAR_CWE
+      Name: CIS_2-9_RR_CWE
       Description: "Remediates CIS 2.9 by enabling reject filtered VPC flow logging for VPCs without it"
       EventPattern: 
         source: 
@@ -1157,28 +1157,28 @@ Resources:
         - 
           Arn: 
             Fn::GetAtt: 
-              - "CIS29SOARLambdaFunction"
+              - "CIS29RRLambdaFunction"
               - "Arn"
-          Id: "CIS_2-9_SOAR_CWE"
-  CIS29SOARCWEPermissions: 
+          Id: "CIS_2-9_RR_CWE"
+  CIS29RRCWEPermissions: 
     Type: AWS::Lambda::Permission
     Properties: 
       FunctionName: 
-        Ref: "CIS29SOARLambdaFunction"
+        Ref: "CIS29RRLambdaFunction"
       Action: "lambda:InvokeFunction"
       Principal: "events.amazonaws.com"
       SourceArn: 
         Fn::GetAtt: 
-          - "CIS29SOAREventRule"
+          - "CIS29RREventRule"
           - "Arn"
-  CIS412SOARLambdaFunction:
+  CIS412RRLambdaFunction:
     Type: AWS::Lambda::Function
     Properties:
-      FunctionName: CIS_4-1_4-2_SOAR
+      FunctionName: CIS_4-1_4-2_RR
       Description: Remediates CIS 4.1 and CIS 4.2 by disabling Public SSH / RDP Rules on Security Groups
       Handler: index.lambda_handler
       MemorySize: 256
-      Role: !GetAtt CIS412SOARLambdaRole.Arn
+      Role: !GetAtt CIS412RRLambdaRole.Arn
       Runtime: python3.7
       Timeout: 60
       Code:
@@ -1228,7 +1228,7 @@ Resources:
               except Exception as e:
                   print(e)
                   raise
-  CIS412SOARLambdaRole:
+  CIS412RRLambdaRole:
     Type: AWS::IAM::Role
     Properties:
       Policies:
@@ -1253,6 +1253,8 @@ Resources:
             - ec2:DescribeSecurityGroups
             - ec2:UpdateSecurityGroupRuleDescriptionsEgress
             - ec2:UpdateSecurityGroupRuleDescriptionsIngress
+            - ec2:RevokeSecurityGroupIngress
+            - ec2:RevokeSecurityGroupEgress
             - iam:PassRole
             - securityhub:UpdateFindings
             Resource: '*'
@@ -1268,13 +1270,13 @@ Resources:
     Version: 1.0
     Properties:
       ServiceToken: !GetAtt CreateActionTargetLambdaFunction.Arn
-      Name: CIS 4.1 & 4.2 SOAR
+      Name: CIS 4.1 & 4.2 RR
       Description: Remediates CIS 4.1 and 4.2 by removed public access to SSH/RDP on the Security Group
-      Id: cis412soar
-  CIS412SOAREventRule: 
+      Id: cis412RR
+  CIS412RREventRule: 
     Type: AWS::Events::Rule
     Properties: 
-      Name: CIS_4-1_4-2_SOAR_CWE
+      Name: CIS_4-1_4-2_RR_CWE
       Description: "Remediates CIS 4.1 and CIS 4.2 by disabling Public SSH / RDP Rules on Security Groups"
       EventPattern: 
         source: 
@@ -1288,19 +1290,19 @@ Resources:
         - 
           Arn: 
             Fn::GetAtt: 
-              - "CIS412SOARLambdaFunction"
+              - "CIS412RRLambdaFunction"
               - "Arn"
-          Id: "CIS_4-1-2_SOAR_CWE"
-  CIS412SOARCWEPermissions: 
+          Id: "CIS_4-1-2_RR_CWE"
+  CIS412RRCWEPermissions: 
     Type: AWS::Lambda::Permission
     Properties: 
       FunctionName: 
-        Ref: "CIS412SOARLambdaFunction"
+        Ref: "CIS412RRLambdaFunction"
       Action: "lambda:InvokeFunction"
       Principal: "events.amazonaws.com"
       SourceArn: 
         Fn::GetAtt: 
-          - "CIS412SOAREventRule"
+          - "CIS412RREventRule"
           - "Arn"
   SendToJIRALambdaFunction:
     Type: AWS::Lambda::Function
@@ -1460,14 +1462,14 @@ Resources:
         Fn::GetAtt: 
           - "SendToJIRAEventRule"
           - "Arn"
-  RunPatchBaselineSOARLambdaFunction:
+  RunPatchBaselineRRLambdaFunction:
     Type: AWS::Lambda::Function
     Properties:
-      FunctionName: PatchingSOAR
+      FunctionName: PatchingRR
       Description: Uses SSM Doc RunPatchBaseline to install security patches on Windows, AMZL, Ubuntu, SLES and CentOS, sent from Inspector vuln findings in SecHub
       Handler: index.lambda_handler
       MemorySize: 256
-      Role: !GetAtt RunPatchBaselineSOARLambdaRole.Arn
+      Role: !GetAtt RunPatchBaselineRRLambdaRole.Arn
       Runtime: python3.7
       Timeout: 170
       Code:
@@ -1515,11 +1517,11 @@ Resources:
               except Exception as e:
                   print(e)
                   raise
-  RunPatchBaselineSOARLambdaRole:
+  RunPatchBaselineRRLambdaRole:
     Type: AWS::IAM::Role
     Properties:
       Policies:
-      - PolicyName: PatchingSOAR-LambdaPolicy
+      - PolicyName: PatchingRR-LambdaPolicy
         PolicyDocument:
           Version: 2012-10-17
           Statement:
@@ -1552,10 +1554,10 @@ Resources:
       Name: Apply Patch Baseline
       Description: Applies Security Patches via System Manager documents
       Id: applypatch
-  RunPatchBaselineSOAREventRule: 
+  RunPatchBaselineRREventRule: 
     Type: AWS::Events::Rule
     Properties: 
-      Name: PatchingSOAR_CWE
+      Name: PatchingRR_CWE
       Description: "Uses SSM Doc RunPatchBaseline to install security patches on Windows, AMZL, Ubuntu, SLES and CentO"
       EventPattern: 
         source: 
@@ -1569,17 +1571,147 @@ Resources:
         - 
           Arn: 
             Fn::GetAtt: 
-              - "RunPatchBaselineSOARLambdaFunction"
+              - "RunPatchBaselineRRLambdaFunction"
               - "Arn"
-          Id: "PatchingSOAR_CWE"
-  RunPatchBaselineSOARCWEPermissions: 
+          Id: "PatchingRR_CWE"
+  RunPatchBaselineRRCWEPermissions: 
     Type: AWS::Lambda::Permission
     Properties: 
       FunctionName: 
-        Ref: "RunPatchBaselineSOARLambdaFunction"
+        Ref: "RunPatchBaselineRRLambdaFunction"
       Action: "lambda:InvokeFunction"
       Principal: "events.amazonaws.com"
       SourceArn: 
         Fn::GetAtt: 
-          - "RunPatchBaselineSOAREventRule"
+          - "RunPatchBaselineRREventRule"
+          - "Arn"
+  CIS43RRLambdaFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: CIS_4-3_RR
+      Description: Remediates CIS 4.3 by disabling removing all rules from a default security group
+      Handler: index.lambda_handler
+      MemorySize: 256
+      Role: !GetAtt CIS43RRLambdaRole.Arn
+      Runtime: python3.7
+      Timeout: 60
+      Code:
+        ZipFile: |
+          import boto3
+          import json
+          import os
+          def lambda_handler(event, context):
+              # boto3 clients/rescs
+              ec2 = boto3.resource('ec2')
+              securityhub = boto3.client('securityhub')
+              # import lambda env var
+              lambdaFunctionName = os.environ['AWS_LAMBDA_FUNCTION_NAME']
+              # parse details from sechub finding
+              myDefaultSecGroupId = str(event['detail']['findings'][0]['Resources'][0]['Details']['Other']['groupId'])
+              findingId = str(event['detail']['findings'][0]['Id'])
+              try:
+                  # sg ec2 resource object
+                  defaultSG = ec2.SecurityGroup(myDefaultSecGroupId)
+                  # find ingress + egress rules
+                  defaultIngress = defaultSG.ip_permissions
+                  defaultEgress = defaultSG.ip_permissions_egress
+                  revokeIngress = defaultSG.revoke_ingress(IpPermissions=defaultIngress)
+                  revokeEgress = defaultSG.revoke_egress(IpPermissions=defaultEgress)
+                  print(revokeIngress)
+                  print(revokeEgress)
+                  try:
+                      response = securityhub.update_findings(
+                          Filters={
+                              'Id': [
+                                  {
+                                      'Value': findingId,
+                                      'Comparison': 'EQUALS'
+                                  }
+                              ]
+                          },
+                          Note={
+                              'Text': 'All rules removed from Default Security Group',
+                              'UpdatedBy': lambdaFunctionName
+                          },
+                          RecordState='ACTIVE'
+                      )
+                      print(response)
+                  except Exception as e:
+                      print(e)
+                      raise
+              except Exception as e:
+                  print(e)
+  CIS43RRLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      Policies:
+      - PolicyName: CIS-4-3-LambdaPolicy
+        PolicyDocument:
+          Version: 2012-10-17
+          Statement:
+          - Effect: Allow
+            Action:
+            - cloudwatch:PutMetricData
+            Resource: '*'
+          - Effect: Allow
+            Action:
+            - logs:CreateLogGroup
+            - logs:CreateLogStream
+            - logs:PutLogEvents
+            Resource: '*'
+          - Effect: Allow
+            Action:
+            - ec2:DescribeSecurityGroupReferences
+            - ec2:DescribeSecurityGroups
+            - ec2:UpdateSecurityGroupRuleDescriptionsEgress
+            - ec2:UpdateSecurityGroupRuleDescriptionsIngress
+            - ec2:RevokeSecurityGroupIngress
+            - ec2:RevokeSecurityGroupEgress
+            - securityhub:UpdateFindings
+            Resource: '*'
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+        - Effect: Allow
+          Principal: { Service: lambda.amazonaws.com }
+          Action:
+          - sts:AssumeRole
+  CIS43ActionTarget:
+    Type: Custom::ActionTarget
+    Version: 1.0
+    Properties:
+      ServiceToken: !GetAtt CreateActionTargetLambdaFunction.Arn
+      Name: CIS 4.3 RR
+      Description: Remediates CIS 4.3 by disabling removing all rules from a default security group
+      Id: cis43RR
+  CIS43RREventRule: 
+    Type: AWS::Events::Rule
+    Properties: 
+      Name: CIS_4-3_RR_CWE
+      Description: "Remediates CIS 4.3 by disabling removing all rules from a default security group"
+      EventPattern: 
+        source: 
+          - aws.securityhub
+        detail-type: 
+          - Security Hub Findings - Custom Action
+        resources: 
+          - !GetAtt CIS43ActionTarget.Arn
+      State: "ENABLED"
+      Targets: 
+        - 
+          Arn: 
+            Fn::GetAtt: 
+              - "CIS43RRLambdaFunction"
+              - "Arn"
+          Id: "CIS_4-3_RR_CWE"
+  CIS43RRCWEPermissions: 
+    Type: AWS::Lambda::Permission
+    Properties: 
+      FunctionName: 
+        Ref: "CIS43RRLambdaFunction"
+      Action: "lambda:InvokeFunction"
+      Principal: "events.amazonaws.com"
+      SourceArn: 
+        Fn::GetAtt: 
+          - "CIS43RREventRule"
           - "Arn"
