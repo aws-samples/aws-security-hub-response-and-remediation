@@ -1,5 +1,7 @@
 ## Response and Remediation with AWS Security Hub
 
+GO Security Hub
+
 This repo contains the CloudFormation template to deploy Security Hub custom actions, CloudWatch Event Rules and Lambda functions as detailed in the AWS Security Blog Post: Response and remediation with AWS Security Hub. There is an FAQ below that details some other information and upcoming plans for this project to extend the Blog.
 
 ***QUICK NOTE:*** The end-to-end combination of a Security Hub custom action, a CloudWatch Event rule, a Lambda function, plus any supporting services needed to perform a specific action is referred to as a “playbook.”
