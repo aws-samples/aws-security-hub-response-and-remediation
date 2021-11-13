@@ -1,6 +1,11 @@
-## Response and Remediation with AWS Security Hub
+# DEPRECATED
+## This project repo is no longer being maintained.  The remediations implemented in this project have been implemented in the AWS Security Hub Automated Response and Remediation (SHARR) project, and this is the project that will be maintained going forward.  Visit the [SHARR repo](https://github.com/aws-solutions/aws-security-hub-automated-response-and-remediation) for details about the solution and how to deploy.  
 
-GO Security Hub
+
+
+
+
+## Response and Remediation with AWS Security Hub
 
 This repo contains the CloudFormation template to deploy Security Hub custom actions, CloudWatch Event Rules and Lambda functions as detailed in the AWS Security Blog Post: Response and remediation with AWS Security Hub. There is an FAQ below that details some other information and upcoming plans for this project to extend the Blog.
 
