@@ -100,7 +100,7 @@ Resources:
           import datetime
           import os
           def lambda_handler(event, context):
-              nonRotatedKeyUser = str(event['detail']['findings'][0]['Resources'][0]['Details']['Other']['userName'])
+              nonRotatedKeyUser = str(event['detail']['findings'][0]['Resources'][0]['Id']).rsplit('/', 1)[-1]
               findingId = str(event['detail']['findings'][0]['Id'])
               lambdaFunctionName = os.environ['AWS_LAMBDA_FUNCTION_NAME']
               # Create bot3 clients and resource
@@ -1024,7 +1024,7 @@ Resources:
           import os
           def lambda_handler(event, context):
               # Grab non-logged VPC ID from Security Hub finding
-              noncompliantVPC = str(event['detail']['findings'][0]['Resources'][0]['Details']['Other']['vpcId'])
+              noncompliantVPC = str(event['detail']['findings'][0]['Resources'][0]['Id']).rsplit('/', 1)[-1]
               findingId = str(event['detail']['findings'][0]['Id'])
               # import lambda runtime vars
               lambdaFunctionName = os.environ['AWS_LAMBDA_FUNCTION_NAME']
