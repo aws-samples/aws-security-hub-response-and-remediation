@@ -1607,7 +1607,7 @@ Resources:
               # import lambda env var
               lambdaFunctionName = os.environ['AWS_LAMBDA_FUNCTION_NAME']
               # parse details from sechub finding
-              myDefaultSecGroupId = str(event['detail']['findings'][0]['Resources'][0]['Details']['Other']['groupId'])
+              myDefaultSecGroupId = str(event['detail']['findings'][0]['Resources'][0]['Details']['AwsEc2SecurityGroup']['GroupId'])
               findingId = str(event['detail']['findings'][0]['Id'])
               try:
                   # sg ec2 resource object
